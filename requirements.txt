@@ -1,0 +1,10 @@
+click
+pandas
+pydantic
+pydantic-settings
+PyYAML
+tqdm
+openpyxl
+XlsxWriter
+Jinja2
+pyecharts

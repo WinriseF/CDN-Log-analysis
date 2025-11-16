@@ -1,0 +1,20 @@
+input:
+  source_type: local
+  path: ./logs/
+  file_pattern: "*.gz"
+
+parser:
+  format: huawei_cdn
+  time_format: "%d/%b/%Y:%H:%M:%S %z"
+
+analysis:
+  modules:
+    - basic_stats
+  top_n_count: 20
+  geoip_db_path: null
+
+output:
+  reporters:
+    - cli
+    - excel
+  report_path: ./reports/
