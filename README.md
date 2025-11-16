@@ -1,3 +1,4 @@
+[English](./README_en.md) | **简体中文**
 # CDN 日志分析工具 (CDN Log Analyzer)
 
 ![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)
