@@ -22,4 +22,9 @@ class CliReporter(BaseReporter):
             print("\n[+] 每小时请求数:")
             print(stats['hourly_counts'].to_string())
         
+        if 'geo_ip' in self.results and self.results['geo_ip']:
+            geo_stats = self.results['geo_ip']
+            print(f"\n[+] Top {self.config.analysis.top_n_count} 来源国家/地区:")
+            print(geo_stats['country_counts'].to_string())
+        
         print("\n--- 报告结束 ---\n")

@@ -10,8 +10,9 @@ parser:
 analysis:
   modules:
     - basic_stats
+    - geo_ip
   top_n_count: 20
-  geoip_db_path: null
+  geoip_db_path: ./GeoLite2-City.mmdb
 
 output:
   reporters:

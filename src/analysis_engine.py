@@ -1,7 +1,8 @@
 import logging
 import pandas as pd
 from src.config import AppConfig
-from src.analyzers.basic_stats_analyzer import BasicStatsAnalyzer 
+from src.analyzers.basic_stats_analyzer import BasicStatsAnalyzer
+from src.analyzers.geo_analyzer import GeoAnalyzer
 
 class AnalysisEngine:
     def __init__(self, df: pd.DataFrame, config: AppConfig):
@@ -9,9 +10,10 @@ class AnalysisEngine:
         self.config = config
         self.results = {}
         
-        # 在这里注册所有可用的分析器。
+        # 注册所有可用的分析器。
         self.available_analyzers = {
-            "basic_stats": BasicStatsAnalyzer(config)
+            "basic_stats": BasicStatsAnalyzer(config),
+            "geo_ip": GeoAnalyzer(config)
         }
 
     def run(self):

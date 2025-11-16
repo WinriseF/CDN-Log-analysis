@@ -7,4 +7,5 @@ tqdm
 openpyxl
 XlsxWriter
 Jinja2
+geoip2
 pyecharts
