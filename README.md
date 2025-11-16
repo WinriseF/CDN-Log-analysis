@@ -34,7 +34,6 @@
 
 ![image-20251116154946296](https://raw.githubusercontent.com/WinriseF/IMAGE/images/img/202511161549432.png)
 
-![image-20251116155032009](https://raw.githubusercontent.com/WinriseF/IMAGE/images/img/202511161550162.png)
 
 ## 🛠️ 安装与准备
 
