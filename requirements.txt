@@ -9,3 +9,4 @@ XlsxWriter
 Jinja2
 geoip2
 pyecharts
+requests

@@ -24,6 +24,13 @@ class CliReporter(BaseReporter):
         
         if 'geo_ip' in self.results and self.results['geo_ip']:
             geo_stats = self.results['geo_ip']
+            
+            # --- 打印运营商统计 ---
+            if 'isp' in geo_stats['ip_geo_details'].columns:
+                isp_counts = geo_stats['ip_geo_details'].groupby('isp')['count'].sum().sort_values(ascending=False)
+                print(f"\n[+] Top {self.config.analysis.top_n_count} 运营商:")
+                print(isp_counts.head(self.config.analysis.top_n_count).to_string())
+
             print(f"\n[+] Top {self.config.analysis.top_n_count} 来源国家/地区:")
             print(geo_stats['country_counts'].to_string())
         

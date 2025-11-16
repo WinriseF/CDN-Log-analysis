@@ -81,6 +81,20 @@ class ExcelReporter(BaseReporter):
             if 'geo_ip' in self.results and self.results['geo_ip']:
                 geo_stats = self.results['geo_ip']
                 
+                # --- 写入运营商统计 ---
+                if 'isp' in geo_stats['ip_geo_details'].columns:
+                    isp_counts = geo_stats['ip_geo_details'].groupby('isp')['count'].sum().sort_values(ascending=False).head(20)
+                    isp_counts.to_frame('count').to_excel(writer, sheet_name='ISPCounts')
+                    worksheet = writer.sheets['ISPCounts']
+                    chart_isp = workbook.add_chart({'type': 'bar'})
+                    chart_isp.add_series({
+                        'categories': ['ISPCounts', 1, 0, len(isp_counts), 0],
+                        'values':     ['ISPCounts', 1, 1, len(isp_counts), 1],
+                        'name': 'Requests by ISP'
+                    })
+                    chart_isp.set_title({'name': 'Top 20 ISP Distribution'})
+                    worksheet.insert_chart('D2', chart_isp)
+
                 # --- 写入来源国家/地区统计 ---
                 country_counts = geo_stats['country_counts']
                 country_counts.to_frame('count').to_excel(writer, sheet_name='CountryCounts')

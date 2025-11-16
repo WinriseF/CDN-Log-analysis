@@ -10,9 +10,22 @@ parser:
 analysis:
   modules:
     - basic_stats
-    - geo_ip
+    - geo_ip  # 启用地理位置分析模块
   top_n_count: 20
-  geoip_db_path: ./GeoLite2-City.mmdb
+  geoip:
+    # 可选值: 'local' (使用本地mmdb文件) 或 'api' (使用在线API)
+    provider: api 
+
+    # --- 本地数据配置 ---
+    local:
+      db_path: ./GeoLite2-City.mmdb
+
+    # --- API 配置 ---
+    api:
+      # API的URL，支持批量查询
+      endpoint: http://ip-api.com/batch
+      # 每次批量查询提交的IP数量
+      batch_size: 100
 
 output:
   reporters:
