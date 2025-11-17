@@ -1,7 +1,23 @@
 input:
-  source_type: local
+  # 可选值: 'local' (从本地文件读取) 或 'api' (从华为CDN API拉取)
+  source_type: api
+
+  # --- 本地模式配置 (当 source_type 为 'local' 时生效) ---
   path: ./logs/
   file_pattern: "*.gz"
+
+  # --- API 模式配置 (当 source_type 为 'api' 时生效) ---
+  api:
+    # 需要拉取日志的CDN加速域名
+    domain_name: "your.cdn.domain.com"
+    # 开始时间 (ISO 8601 UTC格式)
+    start_time: "2025-11-16T10:00:00Z"
+    # 结束时间 (ISO 8601 UTC格式)
+    end_time: "2025-11-16T12:00:00Z"
+    # 华为云的 Access Key
+    access_key: "YOUR_HUAWEI_CLOUD_AK"
+    # 华为云的 Secret Key
+    secret_key: "YOUR_HUAWEI_CLOUD_SK"
 
 parser:
   format: huawei_cdn

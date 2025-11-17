@@ -1,6 +1,6 @@
 import yaml
 from pathlib import Path
-from pydantic import BaseModel, DirectoryPath, FilePath, HttpUrl
+from pydantic import BaseModel, DirectoryPath, FilePath, HttpUrl, SecretStr
 from pydantic_settings import BaseSettings
 
 # --- GeoIP 配置模型 ---
@@ -23,17 +23,32 @@ class AnalysisConfig(BaseModel):
     top_n_count: int = 20
     geoip: GeoIpConfig | None = None
 
-# --- 其他模型 ---
+# --- Input API 配置模型 ---
+class InputApiConfig(BaseModel):
+    domain_name: str
+    start_time: str
+    end_time: str
+    access_key: str
+    secret_key: SecretStr
+    # 华为云CDN API Endpoint, 可以设为默认值
+    endpoint: str = "cdn.myhuaweicloud.com"
+
+# --- InputConfig 模型 ---
 class InputConfig(BaseModel):
     source_type: str = 'local'
-    path: str
-    file_pattern: str = "*.gz"
+    # path 和 file_pattern 在 api 模式下可以为空
+    path: str | None = None
+    file_pattern: str | None = None
+    # api 配置
+    api: InputApiConfig | None = None
 
+# --- ParserConfig 模型 ---
 class ParserConfig(BaseModel):
     format: str
     custom_regex: str | None = None
     time_format: str = "%d/%b/%Y:%H:%M:%S %z"
 
+# --- OutputConfig 模型 ---
 class OutputConfig(BaseModel):
     reporters: list[str]
     report_path: DirectoryPath
@@ -51,5 +66,9 @@ def load_config(config_path: str = 'config/config.yaml') -> AppConfig:
     with open(config_path, 'r', encoding='utf-8') as f:
         config_data = yaml.safe_load(f)
     Path(config_data['output']['report_path']).mkdir(exist_ok=True)
-    Path(config_data['input']['path']).mkdir(exist_ok=True)
+    
+    # 仅当 source_type 是 'local' 时，才确保日志目录存在
+    if config_data.get('input', {}).get('source_type') == 'local':
+        Path(config_data['input']['path']).mkdir(exist_ok=True)
+        
     return AppConfig(**config_data)
