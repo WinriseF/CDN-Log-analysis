@@ -1,4 +1,3 @@
-# src/analyzers/basic_stats_analyzer.py
 import pandas as pd
 from src.config import AppConfig
 from src.analyzers.base import BaseAnalyzer
@@ -15,8 +14,6 @@ class BasicStatsAnalyzer(BaseAnalyzer):
         return "basic_stats"
 
     def run(self, df: pd.DataFrame) -> dict:
-        # --- 准备工作：确保数据类型正确 ---
-        # 转换时间列，并设置为索引以便于按时间统计
         df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True).dt.tz_convert('Asia/Shanghai')
 
         # 状态码统计
@@ -43,9 +40,18 @@ class BasicStatsAnalyzer(BaseAnalyzer):
         # --- 每小时访问量 ---
         hourly_counts = df.set_index('timestamp').resample('h').size()
 
+        # --- 配置决定样本数量 ---
+        sample_limit = self.config.analysis.raw_logs_sample_limit
+        if sample_limit == -1:
+            # -1 表示显示全部
+            raw_logs_sample_df = df.copy()
+        else:
+            # 否则，按指定数量截取头部样本
+            raw_logs_sample_df = df.head(sample_limit)
+
         # --- 返回所有结果 ---
         return {
-            "raw_logs_sample": df.head(100), # 提供一个原始日志样本供报告使用
+            "raw_logs_sample": raw_logs_sample_df, # 使用处理后的DataFrame
             "status_counts": status_counts,
             "top_ips": top_ips,
             "top_ip_status": top_ip_status_df,

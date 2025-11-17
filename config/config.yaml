@@ -31,7 +31,11 @@ analysis:
   modules:
     - basic_stats
     - geo_ip  # 启用地理位置分析模块
-  top_n_count: 20
+  top_n_count: 50
+
+  # 控制在Excel报告中“RawLogsSample”工作表里显示的日志行数。设置为一个正整数 (如 500) 以显示指定数量的样本，设置为 -1 表示显示全部日志 (注意：日志量大时可能导致Excel文件很大)。
+  raw_logs_sample_limit: 200
+
   geoip:
     # 可选值: 'local' (使用本地mmdb文件) 或 'api' (使用在线API)
     provider: api 

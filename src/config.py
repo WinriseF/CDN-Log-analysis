@@ -22,6 +22,7 @@ class AnalysisConfig(BaseModel):
     modules: list[str]
     top_n_count: int = 20
     geoip: GeoIpConfig | None = None
+    raw_logs_sample_limit: int = 100
 
 # --- Input API 配置模型 ---
 class InputApiConfig(BaseModel):
