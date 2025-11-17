@@ -10,3 +10,5 @@ Jinja2
 geoip2
 pyecharts
 requests
+huaweicloudsdkcore
+huaweicloudsdkcdn

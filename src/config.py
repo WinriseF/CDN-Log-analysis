@@ -32,6 +32,8 @@ class InputApiConfig(BaseModel):
     secret_key: SecretStr
     # 华为云CDN API Endpoint, 可以设为默认值
     endpoint: str = "cdn.myhuaweicloud.com"
+    skip_existing_logs: bool = True
+    download_new_logs: bool = True
 
 # --- InputConfig 模型 ---
 class InputConfig(BaseModel):

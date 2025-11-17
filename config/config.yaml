@@ -9,15 +9,19 @@ input:
   # --- API 模式配置 (当 source_type 为 'api' 时生效) ---
   api:
     # 需要拉取日志的CDN加速域名
-    domain_name: "your.cdn.domain.com"
+    domain_name: "img.shutong.hi.cn"
     # 开始时间 (ISO 8601 UTC格式)
-    start_time: "2025-11-16T10:00:00Z"
+    start_time: "2025-11-12T00:00:00Z"
     # 结束时间 (ISO 8601 UTC格式)
-    end_time: "2025-11-16T12:00:00Z"
+    end_time: "2025-11-16T00:00:00Z"
     # 华为云的 Access Key
-    access_key: "YOUR_HUAWEI_CLOUD_AK"
+    access_key: "AK"
     # 华为云的 Secret Key
-    secret_key: "YOUR_HUAWEI_CLOUD_SK"
+    secret_key: "SK"
+    # 是否跳过本地 ./logs 目录下已存在的同名日志文件
+    skip_existing_logs: true
+    # 是否将新拉取的日志保存到 ./logs 目录
+    download_new_logs: true
 
 parser:
   format: huawei_cdn
@@ -32,9 +36,9 @@ analysis:
     # 可选值: 'local' (使用本地mmdb文件) 或 'api' (使用在线API)
     provider: api 
 
-    # --- 本地数据配置 ---
-    local:
-      db_path: ./GeoLite2-City.mmdb
+    # --- 本地数据配置，如果使用api请将下面两行注释 ---
+    # local:
+    #   db_path: ./GeoLite2-City.mmdb
 
     # --- API 配置 ---
     api:

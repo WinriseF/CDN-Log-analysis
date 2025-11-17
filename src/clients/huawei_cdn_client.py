@@ -1,120 +1,88 @@
 import gzip
 import logging
 import requests
-import datetime
-import hashlib
-import hmac
 from typing import Iterator
-from urllib.parse import urlencode
+from pathlib import Path
+from datetime import datetime, timezone
+
+from huaweicloudsdkcore.auth.credentials import GlobalCredentials
+from huaweicloudsdkcdn.v1 import CdnClient, ShowLogsRequest
 
 from src.config import InputApiConfig
 
-# 华为云API签名常量
-ALGORITHM = "SDK-HMAC-SHA256"
-HEADER_X_SDK_DATE = "X-Sdk-Date"
-HEADER_HOST = "host"
-SIGNED_HEADERS = f"{HEADER_HOST};{HEADER_X_SDK_DATE}"
-
-def sign(key, msg):
-    return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
 
 class HuaweiCdnApiClient:
     def __init__(self, config: InputApiConfig):
+        credentials = GlobalCredentials(
+            ak=config.access_key,
+            sk=config.secret_key.get_secret_value()
+        )
+        self.client = CdnClient.new_builder() \
+            .with_credentials(credentials) \
+            .with_endpoint(config.endpoint) \
+            .build()
         self.config = config
 
-    def _get_signature(self, request: dict) -> str:
-        """根据请求信息生成华为云API签名 (V3)"""
-        # 使用 SK 对日期进行 HMAC-SHA256 加密
-        signing_key = sign(("SDK" + self.config.secret_key.get_secret_value()).encode('utf-8'), request['t_stamp_short'])
-        
-        # 拼接规范请求字符串
-        canonical_request = (
-            f"{request['method']}\n"
-            f"{request['canonical_uri']}\n"
-            f"{request['canonical_querystring']}\n"
-            f"{request['canonical_headers']}\n"
-            f"{SIGNED_HEADERS}\n"
-            f"{request['request_payload']}"
-        )
-        
-        # 对规范请求进行 SHA256 Hash
-        hashed_canonical_request = hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()
-        
-        # 拼接待签名字符串
-        string_to_sign = (
-            f"{ALGORITHM}\n"
-            f"{request['t_stamp_long']}\n"
-            f"{hashed_canonical_request}"
-        )
-        
-        # 使用派生密钥对待签名字符串进行 HMAC-SHA256 加密，得到签名
-        signature = hmac.new(signing_key, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
-        return signature
-
     def get_log_download_links(self) -> list[str]:
-        """获取指定时间范围内的所有日志下载链接"""
-        t = datetime.datetime.utcnow()
-        t_stamp_long = t.strftime('%Y%m%dT%H%M%SZ')
-        t_stamp_short = t.strftime('%Y%m%d')
-        
-        params = {
-            "domain_name": self.config.domain_name,
-            "start_time": self.config.start_time,
-            "end_time": self.config.end_time,
-            "page_size": 1000  # 一次性尽可能多地获取
-        }
-        canonical_querystring = urlencode(params, safe=":")
-        
-        request_details = {
-            'method': 'GET',
-            'canonical_uri': '/v1.0/cdn/logs',
-            'canonical_querystring': canonical_querystring,
-            'canonical_headers': f"{HEADER_HOST}:{self.config.endpoint}\n{HEADER_X_SDK_DATE}:{t_stamp_long}\n",
-            'request_payload': hashlib.sha256(b"").hexdigest(),
-            't_stamp_long': t_stamp_long,
-            't_stamp_short': t_stamp_short
-        }
-
-        signature = self._get_signature(request_details)
-
-        headers = {
-            'Content-Type': 'application/json;charset=utf8',
-            'host': self.config.endpoint,
-            'X-Sdk-Date': t_stamp_long,
-            'Authorization': (
-                f"{ALGORITHM} "
-                f"Access={self.config.access_key}, "
-                f"SignedHeaders={SIGNED_HEADERS}, "
-                f"Signature={signature}"
-            )
-        }
-
-        url = f"https://{self.config.endpoint}{request_details['canonical_uri']}?{canonical_querystring}"
-
+        """
+        [SDK版本] 获取指定时间范围内的所有日志下载链接。
+        """
         try:
-            response = requests.get(url, headers=headers, timeout=20)
-            response.raise_for_status()
-            data = response.json()
-            
-            if not data.get('logs'):
+            # --- 将ISO格式的时间字符串转换为毫秒级Unix时间戳 ---
+            try:
+                start_dt = datetime.fromisoformat(self.config.start_time.replace('Z', '+00:00'))
+                end_dt = datetime.fromisoformat(self.config.end_time.replace('Z', '+00:00'))
+                
+                # 转换为毫秒时间戳 (long number)
+                start_time_ms = int(start_dt.timestamp() * 1000)
+                end_time_ms = int(end_dt.timestamp() * 1000)
+
+            except ValueError:
+                logging.error("配置文件中的 start_time 或 end_time 格式无效。请使用 'YYYY-MM-DDTHH:MM:SSZ' 格式。")
                 return []
+            # -----------------------------------------------------------
+
+            # 创建一个请求对象，使用转换后的时间戳
+            request = ShowLogsRequest(
+                domain_name=self.config.domain_name,
+                start_time=start_time_ms,
+                end_time=end_time_ms,
+                page_size=1000
+            )
+
+            logging.info("正在通过华为云SDK请求日志链接...")
             
-            return [log['link'] for log in data['logs']]
-            
-        except requests.exceptions.RequestException as e:
-            logging.error(f"请求华为CDN API获取日志链接失败: {e}")
-            logging.error(f"API响应: {e.response.text if e.response else 'No Response'}")
+            # 调用SDK的接口方法
+            response = self.client.show_logs(request)
+
+            # 处理响应
+            if hasattr(response, 'logs') and response.logs:
+                logging.info(f"SDK成功获取到 {len(response.logs)} 个日志文件链接。")
+                return [log.link for log in response.logs]
+            else:
+                logging.warning("SDK请求成功，但API未返回任何日志文件链接。")
+                return []
+
+        except Exception as e:
+            logging.error(f"通过华为云SDK获取日志链接失败: {e}", exc_info=True)
             return []
 
-    def stream_log_file(self, url: str) -> Iterator[str]:
-        """从给定的URL流式下载并解压gz日志文件，逐行返回"""
+    def download_and_stream_log_file(self, url: str, download_path: Path | None = None) -> Iterator[str]:
         try:
-            with requests.get(url, stream=True, timeout=60) as r:
+            with requests.get(url, stream=True, timeout=180) as r:
                 r.raise_for_status()
-                # 使用 gzip.open 直接处理流式响应内容，无需先保存到磁盘
-                with gzip.open(r.raw, 'rt', encoding='utf-8', errors='ignore') as f:
-                    for line in f:
-                        yield line
+                if download_path:
+                    download_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(download_path, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    logging.info(f"日志已成功下载到: {download_path}")
+                    from src.input_handler import read_log_lines
+                    yield from read_log_lines(download_path)
+                else:
+                    with gzip.open(r.raw, 'rt', encoding='utf-8', errors='ignore') as f:
+                        for line in f:
+                            yield line
         except requests.exceptions.RequestException as e:
             logging.error(f"下载日志文件失败 {url}: {e}")
         except Exception as e:
