@@ -9,19 +9,24 @@
 
 ---
 
+
+
 ## 🌟 核心特性
 
-*   **🔌 模块化架构**: 功能高度解耦，分析器 (Analyzers) 与报告器 (Reporters) 均可作为插件轻松扩展。
+*   **🔌 灵活的数据源**:
+    *   **本地模式**: 支持分析本地存储的 `.gz` 或 `.log` 日志文件。
+    *   **API 模式**: 可直接对接**华为云CDN API**，根据指定的时间范围自动拉取、分析日志，并支持智能缓存，避免重复下载。
 *   **⚙️ 配置驱动**: 所有核心行为均由 `config.yaml` 文件控制，无需修改任何代码即可适配不同场景。
 *   **📊 多维分析**:
     *   **基础统计**: PV、状态码分布、每小时请求数等。
-    *   **Top N 分析**: 轻松获取访问量最高的 IP、URL、来源国家等。
+    *   **Top N 分析**: 轻松获取访问量最高的 IP、来源国家/地区和运营商。
     *   **地理位置分析 (GeoIP)**: 深入了解流量来源，支持两种模式：
         *   **本地模式**: 使用免费的 GeoLite2 离线数据库，速度极快。
         *   **API 模式**: 调用在线 API (`ip-api.com`)，获取高精度的城市和运营商信息。
 *   **📈 多种报告格式**:
     *   **命令行 (CLI)**: 在终端快速预览核心分析结果。
-    *   **Excel 报告**: 生成包含原始数据、统计结果和精美交互式图表 (`柱状图`, `饼图`, `折线图`) 的 `.xlsx` 文件。
+    *   **Excel 报告**: 生成包含原始数据样本、统计结果和可视化图表 (`柱状图`, `饼图`, `折线图`) 的 `.xlsx` 文件。
+*   **🧩 模块化架构**: 功能高度解耦，分析器 (Analyzers) 与报告器 (Reporters) 均可作为插件轻松扩展。
 
 ## 📸 效果演示
 
@@ -72,19 +77,62 @@ pip install -r requirements.txt
 
 ## 🚀 快速开始
 
+本工具支持两种工作模式，由 `config.yaml` 中的 `input.source_type` 控制。
+
+---
+
+### **模式一：本地文件分析 (Local Mode)**
+
 **1. 放置日志文件**
 将您的 CDN 日志文件 (例如 `*.gz` 文件) 放入 `logs/` 目录下。
 
-**2. 配置 `config.yaml`**
-打开 `config/config.yaml` 文件，根据您的需求进行调整。最重要的配置是 `analysis.geoip.provider`，您可以选择：
-*   `provider: local` (速度快)
-*   `provider: api` (推荐，精度高)
+**2. 修改配置**
+打开 `config/config.yaml`，确保配置如下，此配置下会分析所有在logs下面的日志：
+```yaml
+input:
+  source_type: local
+  path: ./logs/
+  file_pattern: "*.gz"
+```
 
 **3. 运行分析**
-在项目根目录下，执行以下命令：
+
 ```bash
 python -m src.main
 ```
+
+---
+
+### **模式二：API 自动拉取 (API Mode)**
+
+**1. 修改配置**
+打开 `config/config.yaml`，进行如下配置，此配置下只会分析在start_time-end_time之间的日志：
+
+```yaml
+input:
+  source_type: api
+  path: ./logs/ # 在API模式下，此路径用作日志的本地缓存目录
+
+  api:
+    domain_name: "your.cdn.domain.com"      # 替换为您的CDN加速域名
+    start_time: "2025-11-16T10:00:00Z"    # 设置分析的开始时间 (UTC)
+    end_time: "2025-11-16T12:00:00Z"      # 设置分析的结束时间 (UTC)
+    access_key: "YOUR_HUAWEI_CLOUD_AK"      # 替换为您的华为云 Access Key
+    secret_key: "YOUR_HUAWEI_CLOUD_SK"      # 替换为您的华为云 Secret Key
+    skip_existing_logs: true              # 推荐：智能跳过已缓存的日志
+    download_new_logs: true               # 推荐：将新日志下载到缓存目录
+```
+
+**2. 运行分析**
+
+```bash
+python -m src.main
+```
+
+程序将自动从华为云API拉取指定时间范围的日志。如果日志已存在于本地缓存 (`./logs` 目录)，将直接使用缓存进行分析，避免重复下载。
+
+---
+
 分析完成后，您将在终端看到摘要报告，并在 `reports/` 目录下找到生成的 Excel 文件。
 
 您也可以指定一个不同的配置文件：
@@ -97,36 +145,47 @@ python -m src.main --config-file /path/to/your/config.yaml
 ```yaml
 # 输入配置
 input:
-  source_type: local
-  path: ./logs/             # 日志文件所在的目录
-  file_pattern: "*.gz"      # 要匹配的文件名模式，可以是*.gz或者*.log
+  # 'local' (从本地文件夹读取) 或 'api' (从华为云API拉取)
+  source_type: api
+  
+  # 本地模式配置 (或 API 模式下的缓存目录)
+  path: ./logs/
+  file_pattern: "*.gz"      #要匹配的本地文件名模式
+
+  # API 模式专属配置
+  api:
+    domain_name: "your.cdn.domain.com"	# CDN分析域名，比如img.XXX.cn
+    start_time: "YYYY-MM-DDTHH:MM:SSZ"  # 分析开始时间 (ISO 8601 UTC格式)，例如："2025-11-12T00:00:00Z"
+    end_time: "YYYY-MM-DDTHH:MM:SSZ"    # 分析结束时间 (ISO 8601 UTC格式)，例如："2025-11-16T16:00:00Z"
+    access_key: "YOUR_AK"			   # 华为云具有读取日志权限的access_key
+    secret_key: "YOUR_SK"			   # secret_key
+    skip_existing_logs: true            # 是否跳过本地已存在的同名日志，推荐true
+    download_new_logs: true             # 是否将新拉取的日志保存到本地，推荐true
 
 # 解析器配置
 parser:
   format: huawei_cdn
-  time_format: "%d/%b/%Y:%H:%M:%S %z" # 日志中的时间格式，默认为华为云CDN格式
+  time_format: "%d/%b/%Y:%H:M:%S %z" # 日志中的时间格式，默认符合华为云日志格式
 
 # 核心分析配置
 analysis:
   modules:
     - basic_stats           # 基础统计分析
     - geo_ip                # 地理位置分析
-  top_n_count: 20           # 各类 Top N 统计的数量
+  top_n_count: 50           # 各类 Top N 统计的数量
+  
+  # 控制报告中原始日志样本的数量。-1 表示显示全部。
+  raw_logs_sample_limit: 1000
 
-  # 地理位置分析的详细配置
+  # 地理位置分析的详细配置，分析IP属地
   geoip:
-    # provider: 'local' 或 'api'
+    # provider: 'local' (离线数据库) 或 'api' (在线API)
     provider: api
-
-    # 本地数据库配置
-    local:
-      db_path: ./GeoLite2-City.mmdb
-
-    # 在线API配置
+    # local:
+    #   db_path: ./GeoLite2-City.mmdb # 本地数据库路径
     api:
-      endpoint: "http://ip-api.com/batch?fields=status,message,country,city,isp,query"
+      endpoint: "http://ip-api.com/batch"
       batch_size: 100
-      timeout: 10
 
 # 输出配置
 output:
